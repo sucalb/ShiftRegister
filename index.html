@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Đăng ký lịch làm việc</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-icon">🗓️</span>
+    <div>
+      <div class="brand-title">URANUS</div>
+      <div class="brand-sub">Đăng ký lịch làm việc</div>
+    </div>
+  </div>
+  <div class="topbar-right" id="topbarRight" hidden>
+    <span class="week-badge" id="topbarWeekBadge" hidden></span>
+    <div>
+      <div class="whoami-name" id="whoamiName"></div>
+      <div class="whoami-status" id="whoamiStatus">Đã lưu trên trình duyệt này</div>
+    </div>
+    <button id="changeNameBtn" class="btn btn-outline">Đổi tên</button>
+  </div>
+</header>
+
+<nav class="tabstrip" id="tabstrip" hidden>
+  <div class="tab active">
+    <span class="tab-icon">📋</span>
+    <span>Đăng ký lịch</span>
+  </div>
+</nav>
+
+<main class="container">
+
+  <!-- STEP 1: chọn tên -->
+  <section id="step-name" class="card center-card">
+    <h1>Chào bạn 👋</h1>
+    <p class="muted">Vui lòng chọn tên của bạn để bắt đầu đăng ký ca làm việc.</p>
+    <div class="field">
+      <label for="nameTrigger">Tên của bạn</label>
+      <div class="dropdown" id="nameDropdown">
+        <button type="button" class="dropdown-trigger" id="nameTrigger">Đang tải danh sách...</button>
+        <div class="dropdown-menu" id="nameMenu" hidden></div>
+      </div>
+    </div>
+    <button id="continueBtn" class="btn btn-primary" disabled>Tiếp tục</button>
+    <p id="nameError" class="error-text" hidden></p>
+  </section>
+
+  <!-- STEP 2: chọn ca -->
+  <section id="step-grid" hidden>
+    <h1>Đăng ký lịch rảnh</h1>
+    <p class="muted">Đánh dấu các ca bạn có thể làm việc trong tuần đã chọn.</p>
+
+    <div class="card table-card">
+      <div class="card-title-row">
+        <div class="card-title">Đăng ký lịch làm việc</div>
+        <div class="week-inline">
+          <label for="weekTrigger">Tuần:</label>
+          <div class="dropdown dropdown-week" id="weekDropdown">
+            <button type="button" class="dropdown-trigger" id="weekTrigger">—</button>
+            <div class="dropdown-menu" id="weekMenu" hidden></div>
+          </div>
+          <button id="newWeekBtn" class="btn btn-outline btn-sm" type="button">+ Tuần mới</button>
+        </div>
+      </div>
+
+      <div id="newWeekForm" class="new-week-form" hidden>
+        <label for="newWeekDate">Chọn 1 ngày bất kỳ trong tuần muốn tạo (tự quy về Thứ Hai):</label>
+        <div class="new-week-row">
+          <input type="date" id="newWeekDate" />
+          <button id="createWeekBtn" class="btn btn-primary btn-sm" type="button">Tạo tuần</button>
+          <button id="cancelWeekBtn" class="btn btn-outline btn-sm" type="button">Huỷ</button>
+        </div>
+        <p id="newWeekError" class="error-text" hidden></p>
+      </div>
+
+      <div class="legend-row">
+        <span class="legend-item">✓ Ô xanh = ca bạn đã chọn</span>
+        <span class="legend-item"><span class="swatch"></span> Ô vàng = không có ca</span>
+      </div>
+
+      <div class="note-banner">
+        Bấm vào ô để đánh dấu ca bạn <strong>có thể làm</strong>, bấm lại để bỏ chọn. Nhớ bấm
+        <strong>Đồng bộ lên Sheet</strong> sau khi chọn xong để nhà trường thấy được lịch của bạn.
+      </div>
+
+      <div class="status-row">
+        <span id="syncStatus" class="muted">Đang tải...</span>
+      </div>
+
+      <div class="table-wrap">
+        <table id="shiftTable" class="shift-table">
+          <thead>
+            <tr id="tableHeadRow"></tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="actions">
+        <button id="saveDraftBtn" class="btn btn-outline">Lưu nháp</button>
+        <button id="syncBtn" class="btn btn-primary">Đồng bộ lên Sheet</button>
+      </div>
+      <p id="gridError" class="error-text" hidden></p>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
