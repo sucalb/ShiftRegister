@@ -13,6 +13,7 @@
     tabstrip: document.getElementById('tabstrip'),
     whoami: document.getElementById('whoamiName'),
     changeNameBtn: document.getElementById('changeNameBtn'),
+    currentWeekLabel: document.getElementById('currentWeekLabel'),
     newWeekBtn: document.getElementById('newWeekBtn'),
     newWeekForm: document.getElementById('newWeekForm'),
     newWeekDate: document.getElementById('newWeekDate'),
@@ -38,7 +39,6 @@
   };
 
   var nameDropdown = createDropdown_(document.getElementById('nameDropdown'));
-  var weekDropdown = createDropdown_(document.getElementById('weekDropdown'));
 
   init();
 
@@ -55,7 +55,6 @@
       showNameStep_();
     });
     els.continueBtn.addEventListener('click', onContinue_);
-    weekDropdown.onChange(onWeekChange_);
     els.saveDraftBtn.addEventListener('click', onSaveDraft_);
     els.syncBtn.addEventListener('click', onSync_);
     els.newWeekBtn.addEventListener('click', onToggleNewWeekForm_);
@@ -197,11 +196,9 @@
         var weeks = data.weeks;
         if (!weeks.length) throw new Error('Chưa có tuần nào trong Sheet.');
         state.weeks = weeks;
-        weekDropdown.setOptions(weeks.map(function (w) { return { value: w.name, label: w.name }; }));
         var target = selectWeek && weeks.some(function (w) { return w.name === selectWeek; })
           ? selectWeek
           : pickDefaultWeek_(weeks);
-        weekDropdown.setValue(target);
         loadGrid_(target);
       })
       .catch(function (err) {
@@ -227,10 +224,6 @@
     return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
   }
 
-  function onWeekChange_(weekName) {
-    loadGrid_(weekName);
-  }
-
   function loadGrid_(weekName) {
     hideError_(els.gridError);
     els.syncStatus.textContent = 'Đang tải...';
@@ -242,6 +235,7 @@
         state.currentWeek = weekName;
         state.days = data.days;
         state.shifts = data.shifts;
+        els.currentWeekLabel.textContent = weekName;
         els.topbarWeekBadge.textContent = weekName;
         els.topbarWeekBadge.hidden = false;
 
