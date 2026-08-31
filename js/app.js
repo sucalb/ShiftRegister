@@ -134,12 +134,44 @@
     };
   }
 
+  // Gộp "employees" + "weeks" thành 1 lần gọi (action=bootstrap) và cache lại trong phiên,
+  // để không phải quét lại Sheet mỗi khi chuyển bước — đây là chỗ trước đây gây chậm lúc mới vào.
+  var bootstrapPromise = null;
+
+  function getBootstrap_() {
+    if (!bootstrapPromise) {
+      bootstrapPromise = apiGet_('bootstrap', {}).then(function (data) {
+        if (data.error) throw new Error(data.error);
+        return data;
+      }).catch(function (err) {
+        bootstrapPromise = null; // cho phép thử lại nếu lỗi
+        throw err;
+      });
+    }
+    return bootstrapPromise;
+  }
+
   function showNameStep_() {
     els.stepGrid.hidden = true;
     els.topbarRight.hidden = true;
     els.tabstrip.hidden = true;
     els.stepName.hidden = false;
-    loadEmployees_();
+
+    nameDropdown.setLoading('Đang tải danh sách...');
+    els.continueBtn.disabled = true;
+    getBootstrap_()
+      .then(function (data) {
+        nameDropdown.setOptions(
+          data.employees.map(function (emp) { return { value: emp.code, label: emp.name }; }),
+          '— Chọn tên —'
+        );
+        nameDropdown.onChange(function () {
+          els.continueBtn.disabled = !nameDropdown.getValue();
+        });
+      })
+      .catch(function (err) {
+        showError_(els.nameError, 'Không tải được danh sách nhân sự: ' + err.message);
+      });
   }
 
   function showGridStep_() {
@@ -159,29 +191,10 @@
     showGridStep_();
   }
 
-  function loadEmployees_() {
-    nameDropdown.setLoading('Đang tải danh sách...');
-    els.continueBtn.disabled = true;
-    apiGet_('employees', {})
-      .then(function (list) {
-        if (list.error) throw new Error(list.error);
-        nameDropdown.setOptions(
-          list.map(function (emp) { return { value: emp.code, label: emp.name }; }),
-          '— Chọn tên —'
-        );
-        nameDropdown.onChange(function () {
-          els.continueBtn.disabled = !nameDropdown.getValue();
-        });
-      })
-      .catch(function (err) {
-        showError_(els.nameError, 'Không tải được danh sách nhân sự: ' + err.message);
-      });
-  }
-
   function loadWeeks_(selectWeek) {
-    apiGet_('weeks', {})
-      .then(function (weeks) {
-        if (weeks.error) throw new Error(weeks.error);
+    getBootstrap_()
+      .then(function (data) {
+        var weeks = data.weeks;
         if (!weeks.length) throw new Error('Chưa có tuần nào trong Sheet.');
         state.weeks = weeks;
         weekDropdown.setOptions(weeks.map(function (w) { return { value: w.name, label: w.name }; }));
@@ -335,6 +348,7 @@
         els.newWeekForm.hidden = true;
         els.newWeekDate.value = '';
         showToast_('Đã tạo tuần ' + data.week.name + '!', 'ok');
+        bootstrapPromise = null; // danh sách tuần vừa đổi, bỏ cache cũ để lấy lại từ server
         loadWeeks_(data.week.name);
       })
       .catch(function (err) {

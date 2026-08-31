@@ -14,7 +14,7 @@ function doGet(e) {
   try {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     if (action === 'weeks') {
-      return jsonOut_(listWeeks_(ss));
+      return jsonOut_(getCachedWeeks_(ss));
     }
     if (action === 'grid') {
       var weekName = e.parameter.week;
@@ -35,15 +35,39 @@ function doGet(e) {
       return jsonOut_({ week: weekName, days: g.days, shifts: g.shifts, cells: cells });
     }
     if (action === 'employees') {
-      var weeks = listWeeks_(ss);
-      if (weeks.length === 0) throw new Error('Chưa có tab tuần nào (tên tab phải bắt đầu bằng "TUẦN ")');
-      var empSheet = ss.getSheetByName(weeks[weeks.length - 1].name);
-      return jsonOut_(findEmployees_(empSheet));
+      return jsonOut_(getEmployeesFromLatestWeek_(ss));
+    }
+    if (action === 'bootstrap') {
+      var weeks2 = getCachedWeeks_(ss);
+      if (weeks2.length === 0) throw new Error('Chưa có tab tuần nào (tên tab phải bắt đầu bằng "TUẦN ")');
+      var empSheet2 = ss.getSheetByName(weeks2[weeks2.length - 1].name);
+      return jsonOut_({ weeks: weeks2, employees: findEmployees_(empSheet2) });
     }
     return jsonOut_({ error: 'Unknown action: ' + action });
   } catch (err) {
     return jsonOut_({ error: String(err) });
   }
+}
+
+function getEmployeesFromLatestWeek_(ss) {
+  var weeks = getCachedWeeks_(ss);
+  if (weeks.length === 0) throw new Error('Chưa có tab tuần nào (tên tab phải bắt đầu bằng "TUẦN ")');
+  var empSheet = ss.getSheetByName(weeks[weeks.length - 1].name);
+  return findEmployees_(empSheet);
+}
+
+/** Danh sách tuần ít thay đổi nên cache 5 phút để tránh quét lại toàn bộ Sheet mỗi lần có người vào app. */
+function getCachedWeeks_(ss) {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('weeks_v1');
+  if (cached) return JSON.parse(cached);
+  var weeks = listWeeks_(ss);
+  cache.put('weeks_v1', JSON.stringify(weeks), 300);
+  return weeks;
+}
+
+function invalidateWeeksCache_() {
+  CacheService.getScriptCache().remove('weeks_v1');
 }
 
 function doPost(e) {
@@ -130,6 +154,7 @@ function createWeek_(ss, mondayDateStr) {
     newSheet.getRange(weekLabelRow + 1, g.dayCols[0] + 1).setValue(monday);
   }
 
+  invalidateWeeksCache_();
   return { name: name, startDate: formatDdMmYyyy_(monday) };
 }
 
@@ -213,17 +238,31 @@ function listWeeks_(ss) {
     var sheet = sheets[i];
     var name = sheet.getName();
     if (!/^TUẦN\s/.test(name)) continue;
-    try {
-      var g = findGrid_(sheet);
-      weeks.push({ name: name, startDate: g.days[0].date });
-    } catch (err) {
-      // bỏ qua tab không đúng cấu trúc
-    }
+    var startDate = findWeekStartDate_(sheet);
+    if (startDate) weeks.push({ name: name, startDate: startDate });
   }
   weeks.sort(function (a, b) {
     return parseDdMmYyyy_(a.startDate) - parseDdMmYyyy_(b.startDate);
   });
   return weeks;
+}
+
+/**
+ * Chỉ đọc vài dòng đầu tab (đủ để tìm hàng ngày/tháng) thay vì cả tab —
+ * dùng cho listWeeks_ để liệt kê nhanh, không cần đọc tới bảng ca/thống kê phía dưới.
+ */
+function findWeekStartDate_(sheet) {
+  var scanRows = Math.min(15, sheet.getLastRow());
+  if (scanRows < 1) return null;
+  var values = sheet.getRange(1, 1, scanRows, sheet.getLastColumn()).getValues();
+  for (var r = 0; r < values.length; r++) {
+    var cols = [];
+    for (var c = 0; c < values[r].length; c++) {
+      if (DATE_RE.test(cellToDateString_(values[r][c]))) cols.push(c);
+    }
+    if (cols.length >= 5) return cellToDateString_(values[r][cols[0]]);
+  }
+  return null;
 }
 
 function splitNames_(raw) {
