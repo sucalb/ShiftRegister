@@ -65,14 +65,25 @@ function doPost(e) {
     if (!code) throw new Error('Thiếu mã nhân viên (code)');
 
     var cells = payload.cells || [];
-    for (var i = 0; i < cells.length; i++) {
-      var cell = cells[i];
-      var range = sheet.getRange(cell.row, cell.col);
-      var names = splitNames_(String(range.getValue() || ''));
-      var idx = names.indexOf(code);
-      if (cell.checked && idx === -1) names.push(code);
-      if (!cell.checked && idx !== -1) names.splice(idx, 1);
-      range.setValue(names.join(', '));
+    if (cells.length > 0) {
+      var rows = cells.map(function (c) { return c.row; });
+      var cols = cells.map(function (c) { return c.col; });
+      var minRow = Math.min.apply(null, rows), maxRow = Math.max.apply(null, rows);
+      var minCol = Math.min.apply(null, cols), maxCol = Math.max.apply(null, cols);
+
+      var range = sheet.getRange(minRow, minCol, maxRow - minRow + 1, maxCol - minCol + 1);
+      var values = range.getValues();
+
+      cells.forEach(function (cell) {
+        var r = cell.row - minRow, c = cell.col - minCol;
+        var names = splitNames_(String(values[r][c] || ''));
+        var idx = names.indexOf(code);
+        if (cell.checked && idx === -1) names.push(code);
+        if (!cell.checked && idx !== -1) names.splice(idx, 1);
+        values[r][c] = names.join(', ');
+      });
+
+      range.setValues(values);
     }
     return jsonOut_({ ok: true, updated: cells.length });
   } catch (err) {
