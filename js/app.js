@@ -206,14 +206,23 @@
       });
   }
 
+  // Luôn mặc định vào tuần SAU (tuần hiện tại + 7 ngày) — lịch đăng ký luôn được gửi
+  // trước 1 tuần, nên đây mới là tuần nhân viên cần đăng ký, không phải tuần đang chạy.
   function pickDefaultWeek_(weeks) {
     var today = new Date();
     today.setHours(0, 0, 0, 0);
+    var dow = today.getDay(); // 0 = Chủ Nhật .. 6 = Thứ Bảy
+    var offsetToMonday = (dow === 0) ? -6 : (1 - dow);
+    var thisMonday = new Date(today.getTime());
+    thisMonday.setDate(thisMonday.getDate() + offsetToMonday);
+    var nextMonday = new Date(thisMonday.getTime());
+    nextMonday.setDate(nextMonday.getDate() + 7);
+
     var best = weeks[0].name;
     var bestDiff = Infinity;
     for (var i = 0; i < weeks.length; i++) {
       var d = parseDdMmYyyy_(weeks[i].startDate);
-      var diff = Math.abs(d - today);
+      var diff = Math.abs(d - nextMonday);
       if (diff <= bestDiff) { bestDiff = diff; best = weeks[i].name; }
     }
     return best;
