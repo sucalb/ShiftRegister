@@ -29,7 +29,11 @@ function doGet(e) {
           var c = g.dayCols[j];
           var raw = String(g.values[r][c] || '');
           var names = splitNames_(raw);
-          cells[(r + 1) + '_' + (c + 1)] = code ? (names.indexOf(code) !== -1) : false;
+          var bg = String(g.backgrounds[r][c] || '').toLowerCase();
+          cells[(r + 1) + '_' + (c + 1)] = {
+            on: code ? (names.indexOf(code) !== -1) : false,
+            closed: bg !== '' && bg !== '#ffffff'
+          };
         }
       }
       return jsonOut_({ week: weekName, days: g.days, shifts: g.shifts, cells: cells });
@@ -171,7 +175,9 @@ function findWeekLabelRow_(sheet, dateRowIdx) {
 
 /** Dò cấu trúc lưới ca/ngày của 1 tab tuần, không phụ thuộc số dòng/cột cố định. */
 function findGrid_(sheet) {
-  var values = sheet.getDataRange().getValues();
+  var range = sheet.getDataRange();
+  var values = range.getValues();
+  var backgrounds = range.getBackgrounds();
   var nRows = values.length;
   var nCols = nRows > 0 ? values[0].length : 0;
 
@@ -205,7 +211,7 @@ function findGrid_(sheet) {
     return { row: r3 + 1, label: String(values[r3][shiftCol]).trim() };
   });
 
-  return { values: values, dateRowIdx: dateRowIdx, dayCols: dayCols, shiftRows: shiftRows, days: days, shifts: shifts };
+  return { values: values, backgrounds: backgrounds, dateRowIdx: dateRowIdx, dayCols: dayCols, shiftRows: shiftRows, days: days, shifts: shifts };
 }
 
 /** Dò bảng danh sách nhân sự (cột "TÊN" / "KÝ HIỆU") ở bất kỳ đâu trong tab. */

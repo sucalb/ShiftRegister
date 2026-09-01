@@ -35,7 +35,8 @@
     currentWeek: null,
     days: [],
     shifts: [],
-    selected: {} // "row_col" -> boolean
+    selected: {}, // "row_col" -> boolean
+    closed: {} // "row_col" -> boolean (ô không có ca, không cho chọn)
   };
 
   var nameDropdown = createDropdown_(document.getElementById('nameDropdown'));
@@ -248,8 +249,15 @@
         els.topbarWeekBadge.textContent = weekName;
         els.topbarWeekBadge.hidden = false;
 
+        state.closed = {};
+        var serverSelected = {};
+        Object.keys(data.cells).forEach(function (key) {
+          state.closed[key] = !!data.cells[key].closed;
+          serverSelected[key] = !!data.cells[key].on;
+        });
+
         var draft = readJSON_(localStorage.getItem(DRAFT_KEY_PREFIX + state.employee.code + '.' + weekName));
-        state.selected = draft || Object.assign({}, data.cells);
+        state.selected = draft || serverSelected;
 
         renderTable_();
         els.syncStatus.textContent = 'Chưa đồng bộ (đang xem lịch hiện có trên Sheet)';
@@ -271,14 +279,16 @@
       bodyHtml += '<tr><th>' + escapeHtml_(shift.label) + '</th>';
       state.days.forEach(function (day) {
         var key = shift.row + '_' + day.col;
-        var isOn = !!state.selected[key];
-        bodyHtml += '<td><button type="button" class="cell-btn' + (isOn ? ' selected' : '') + '" data-key="' + key + '">' + (isOn ? '✓' : '') + '</button></td>';
+        var isClosed = !!state.closed[key];
+        var isOn = !isClosed && !!state.selected[key];
+        var cls = 'cell-btn' + (isOn ? ' selected' : '') + (isClosed ? ' closed' : '');
+        bodyHtml += '<td><button type="button" class="' + cls + '" data-key="' + key + '"' + (isClosed ? ' disabled' : '') + '>' + (isOn ? '✓' : '') + '</button></td>';
       });
       bodyHtml += '</tr>';
     });
     els.tableBody.innerHTML = bodyHtml;
 
-    var buttons = els.tableBody.querySelectorAll('.cell-btn');
+    var buttons = els.tableBody.querySelectorAll('.cell-btn:not(.closed)');
     buttons.forEach(function (btn) {
       btn.addEventListener('click', function () {
         var key = btn.getAttribute('data-key');
@@ -308,6 +318,7 @@
     state.shifts.forEach(function (shift) {
       state.days.forEach(function (day) {
         var key = shift.row + '_' + day.col;
+        if (state.closed[key]) return; // ô không có ca, không gửi lên
         cells.push({ row: shift.row, col: day.col, checked: !!state.selected[key] });
       });
     });
