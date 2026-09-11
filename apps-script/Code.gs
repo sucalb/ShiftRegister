@@ -121,7 +121,11 @@ function doPost(e) {
   }
 }
 
-/** Tạo 1 tab tuần mới bằng cách nhân bản tab mẫu "BẢN GỐC" và điền ngày tháng. */
+/**
+ * Tạo 1 tab tuần mới bằng cách nhân bản tuần GẦN NHẤT đã có (để mang theo ca/định dạng/
+ * nhân sự mới nhất), rồi điền ngày tháng và xoá sạch tên đã đăng ký của tuần cũ.
+ * Nếu chưa có tuần nào thì dùng tab mẫu "BẢN GỐC".
+ */
 function createWeek_(ss, mondayDateStr) {
   var m = DATE_RE.exec(String(mondayDateStr || '').trim());
   if (!m) throw new Error('Ngày không hợp lệ: ' + mondayDateStr);
@@ -138,8 +142,11 @@ function createWeek_(ss, mondayDateStr) {
     throw new Error('Tuần "' + name + '" đã tồn tại rồi, chọn tuần khác trong danh sách nhé.');
   }
 
-  var template = ss.getSheetByName('BẢN GỐC');
-  if (!template) throw new Error('Không tìm thấy tab mẫu "BẢN GỐC" để tạo tuần mới.');
+  var weeks = listWeeks_(ss);
+  var templateName = weeks.length > 0 ? weeks[weeks.length - 1].name : 'BẢN GỐC';
+  var isRealWeek = weeks.length > 0;
+  var template = ss.getSheetByName(templateName);
+  if (!template) throw new Error('Không tìm thấy tab mẫu "' + templateName + '" để tạo tuần mới.');
 
   var newSheet = template.copyTo(ss);
   newSheet.setName(name);
@@ -158,8 +165,26 @@ function createWeek_(ss, mondayDateStr) {
     newSheet.getRange(weekLabelRow + 1, g.dayCols[0] + 1).setValue(monday);
   }
 
+  // Nhân bản từ 1 tuần thật thì phải xoá tên đã đăng ký của tuần đó, không được mang sang.
+  if (isRealWeek) clearRegistrations_(newSheet, g);
+
   invalidateWeeksCache_();
   return { name: name, startDate: formatDdMmYyyy_(monday) };
+}
+
+function clearRegistrations_(sheet, g) {
+  var minRow = Math.min.apply(null, g.shiftRows) + 1;
+  var maxRow = Math.max.apply(null, g.shiftRows) + 1;
+  var minCol = Math.min.apply(null, g.dayCols) + 1;
+  var maxCol = Math.max.apply(null, g.dayCols) + 1;
+  var nRows = maxRow - minRow + 1, nCols = maxCol - minCol + 1;
+  var blank = [];
+  for (var r = 0; r < nRows; r++) {
+    var row = [];
+    for (var c = 0; c < nCols; c++) row.push('');
+    blank.push(row);
+  }
+  sheet.getRange(minRow, minCol, nRows, nCols).setValues(blank);
 }
 
 /** Tìm hàng có ô chữ "Tuần" (nhãn ngày bắt đầu tuần) phía trên hàng ngày/tháng chính. */
